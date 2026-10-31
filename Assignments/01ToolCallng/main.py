@@ -117,10 +117,15 @@ def validate_call(
        with ``call.arguments`` and that tool specification's ``parameters``.
     4. Return the helper's result unchanged. Do not execute any tool here.
     """
-    
     # TODO 1: Implement the complete validation contract described above.
-    raise NotImplementedError
+    registered_tool = registry.get(call.name)
+    if registered_tool is None:
+        return ValidationResult.invalid(
+            error_code="unknown_tool",
+            message=f"Unknown tool: {call.name}",
+        )
 
+    return validate_arguments(call.arguments, registered_tool.parameters)
 
 def execute_call(
     call: ToolCall,
@@ -143,7 +148,41 @@ def execute_call(
        ``tool_execution_failed``. Never expose raw exception text in a result.
     """
     # TODO 2: Implement the complete execution and retry contract above.
-    raise NotImplementedError
+    validation_result = validate_call(call, registry)
+    if not validation_result.ok:
+        return ExecutionOutcome.failed(
+            error_code=validation_result.error_code,
+            message=validation_result.message,
+            attempts=0,
+        )
+    if max_attempts < 1:
+        return ExecutionOutcome.failed(
+            error_code="invalid_attempt_limit",
+            message="max_attempts must be at least 1.",
+            attempts=0,
+        )
+    
+    validated_tool = registry[call.name]
+    attempts = 0
+    while attempts < max_attempts:
+        attempts += 1
+        try:
+            result = validated_tool.handler(**call.arguments)
+            return ExecutionOutcome.succeeded(value=result, attempts=attempts)
+        except validated_tool.transient_errors:
+            if attempts == max_attempts:
+                return ExecutionOutcome.failed(
+                    error_code="transient_failure",
+                    message=f"Transient error occurred after {attempts} attempts.",
+                    attempts=attempts,
+                )
+            # Otherwise, continue to retry
+        except Exception:
+            return ExecutionOutcome.failed(
+                error_code="tool_execution_failed",
+                message="An unexpected error occurred during tool execution.",
+                attempts=attempts,
+            )
 
 
 def make_tool_result(
@@ -162,7 +201,30 @@ def make_tool_result(
     4. Return a ``ToolResult``. Do not mutate either input object.
     """
     # TODO 3: Implement the complete result-normalization contract above.
-    raise NotImplementedError
+    tool_call_id = call.tool_call_id
+    tool_name = call.name
+    ok = outcome.ok
+    attempts = outcome.attempts
+    if ok:
+        return ToolResult(
+            tool_call_id=tool_call_id,
+            tool_name=tool_name,
+            ok=True,
+            output=outcome.value,
+            error_code=None,
+            message=None,
+            attempts=attempts,
+        )
+    else:
+        return ToolResult(
+            tool_call_id=tool_call_id,
+            tool_name=tool_name,
+            ok=False,
+            output=None,
+            error_code=outcome.error_code,
+            message=outcome.message,
+            attempts=attempts,
+        )
 
 
 def dispatch_tool_call(
