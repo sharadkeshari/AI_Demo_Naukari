@@ -105,29 +105,28 @@ def run_graph(graph: Any, user_text: str, recursion_limit: int) -> RunResult:
     # documented SUCCESS, EMPTY_OUTPUT, INVALID_INPUT, LIMIT_REACHED, or
     # GRAPH_ERROR result without leaking raw exception text.
     
-    events = []
     try:
         build_input= build_run_input(user_text, recursion_limit)
     except ValueError:
-        return RunResult(status=RunStatus.INVALID_INPUT, final_answer="User text or recursion limit was invalid", trace=[])
-
+        return RunResult(status=RunStatus.INVALID_INPUT, final_answer=None,step_count=0, trace=())
+    events = []
+        
     try:
-        for event in graph.stream(build_input.graph_input, build_input.config, stream_mode='updates'):
+        for event in graph.stream(build_input.graph_input, config=build_input.config, stream_mode='updates'):
             events.append(event)
     except GraphRecursionError:
         trace = extract_trace(events)
-        return RunResult(status=RunStatus.LIMIT_REACHED, final_answer="The graph reached its recursion limit.", trace=trace)
+        return RunResult(status=RunStatus.LIMIT_REACHED, final_answer=None,step_count=len(trace), trace=trace, message='Graph stopped at the recursion limit.')
     except Exception:
         trace = extract_trace(events)
-        return RunResult(status=RunStatus.GRAPH_ERROR, final_answer="Another graph failure occurred.", trace=trace)
-    trace = extract_trace(events)
+        return RunResult(status=RunStatus.GRAPH_ERROR, final_answer=None,step_count=len(trace), trace=trace,message="Graph execution failed.")
 
     trace = extract_trace(events)
     final_answer = final_answer_from_events(events)
 
     if final_answer is None:
-        return RunResult(RunStatus.EMPTY_OUTPUT,None, trace)
+        return RunResult(status=RunStatus.EMPTY_OUTPUT,final_answer=None,step_count=len(trace),trace= trace)
 
-    return RunResult(RunStatus.SUCCESS, final_answer, len(trace), trace)
+    return RunResult(status=RunStatus.COMPLETED, final_answer=final_answer, step_count=len(trace), trace=trace)
     
 
