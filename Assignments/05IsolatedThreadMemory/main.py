@@ -72,23 +72,25 @@ def build_thread_config(thread_id: str) -> dict[str, dict[str, str]]:
     """Validate a thread ID and build the LangGraph persistence config."""
     # TODO 1: Reject non-string or blank IDs with InvalidThreadIdError. Strip a
     # valid ID and return exactly {"configurable": {"thread_id": clean_id}}.
-    raise NotImplementedError(
-        "TODO 1: validate the thread ID and build the exact persistence config"
-    )
+    
+    if not isinstance(thread_id, str):
+        raise InvalidThreadIdError()
+    clean_id = thread_id.strip()
+    if not clean_id:
+        raise InvalidThreadIdError()
+    return {"configurable": {"thread_id": clean_id}}
 
-
-def send_message(
-    graph: Any,
-    thread_id: str,
-    message: str,
-) -> Mapping[str, Any]:
+def send_message(    graph: Any,    thread_id: str,    message: str,) -> Mapping[str, Any]:
     """Send one user message through the supplied checkpointed graph."""
     # TODO 2: Reject non-string or blank messages with InvalidMessageError.
     # Keep valid message text exactly as supplied, wrap it in a HumanMessage,
     # call build_thread_config, invoke the graph once, and return its result.
-    raise NotImplementedError(
-        "TODO 2: send the exact user message through the requested thread"
-    )
+    if not isinstance(message, str) or not message.strip():
+        raise InvalidMessageError()
+
+    config = build_thread_config(thread_id)
+
+    return graph.invoke({"messages": [HumanMessage(content=message)]}, config=config,)
 
 
 def extract_reply(result: Mapping[str, Any]) -> ConversationReply:
@@ -96,6 +98,17 @@ def extract_reply(result: Mapping[str, Any]) -> ConversationReply:
     # TODO 3: Scan result["messages"] newest first. Return only the latest
     # nonblank AIMessage text in ConversationReply. If none exists, raise
     # MissingAssistantReplyError.
-    raise NotImplementedError(
-        "TODO 3: extract the latest nonblank assistant reply from graph messages"
-    )
+    messages = result.get("messages")
+    
+    if not messages:
+      raise MissingAssistantReplyError()
+    
+    for message in reversed(messages):
+      if (
+      isinstance(message, AIMessage)
+      and isinstance(message.content, str)
+      and message.content.strip()
+      ):
+        return ConversationReply(content=message.content)
+      
+    raise MissingAssistantReplyError()
