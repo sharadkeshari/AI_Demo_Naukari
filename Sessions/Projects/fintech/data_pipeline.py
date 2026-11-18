@@ -19,7 +19,7 @@ CHROMA_DIR = './bajajbot_chroma_db'
 COLLECTION_NAME = 'bajaj_policy'
 LOG_FILE ="./processed_files.json"
 
-CHUNK_SIZE = 500
+CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 0
 
 

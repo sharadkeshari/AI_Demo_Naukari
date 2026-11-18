@@ -1,9 +1,3 @@
-import os
-import uuid
-#from fastapi import FastAPI, HTTPException
-#from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
-from typing import Optional
 from dotenv import load_dotenv
 load_dotenv()
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -13,9 +7,6 @@ from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.messages import HumanMessage, ToolMessage
 from tools import get_loan_status, get_emi_schedule, calculate_prepayment, process_refund_request
 from rag_chain import rag_answer
-
-#app = FastAPI()
-# print(get_loan_status.invoke("BFL2024001"))
 
 llm = ChatOpenAI(
     model="gpt-4o-mini",
@@ -64,8 +55,13 @@ def classify_query(query):
 
 # don't give too many tools to an agent, that is a trade off for the usage
 
+###################################################################
+# testing methods region
 # print(classify_query("HI"))
 
+# print(classify_query("How much loan a person with 25000 salary can get?"))
+
+###################################################################
 SYSTEM_PROMPT = """You are a professional Bajaj Finance customer support agent.
 
 You have access to:
