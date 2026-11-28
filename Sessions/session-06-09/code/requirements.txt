@@ -6,3 +6,4 @@ langchain_openai
 langchain_mcp_adapters
 agent_framework
 mcp<2
+crewai
